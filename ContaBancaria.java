@@ -212,7 +212,7 @@ public class ContaBancaria {
 
     public void encerrarConta(int numeroConta) {
         try (Connection connection = ConnectionDB.getConexaoMySQL()) {
-            String sql = "UPDATE conta_bancaria SET STATUS_CONTA = 1 WHERE NUMERO_CONTA = ?";
+            String sql = "UPDATE conta_bancaria SET STATUS_CONTA = 0 WHERE NUMERO_CONTA = ?";
             PreparedStatement statement = connection.prepareStatement(sql);
 
             statement.setInt(1, numeroConta);
