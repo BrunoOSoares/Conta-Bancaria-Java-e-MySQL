@@ -157,6 +157,8 @@ public class ContaBancaria {
 
         empurrarTela();
 
+        
+
         // verificar se a conta existe
         if (verificarContaExiste(numeroDigitado)) {
             int variacao = 0;
