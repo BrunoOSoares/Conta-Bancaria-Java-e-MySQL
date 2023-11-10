@@ -169,31 +169,35 @@ public class ContaBancaria {
                 System.out.println("4-DEPOSITO");
                 System.out.println("5-TRANSFERÊNCIA");
                 System.out.println("6-SAQUE");
-                System.out.println("7-VOLTAR AO MENU PRINCIPAL");
-
+                System.out.println("7-ENCERRAR CONTA");
+                System.out.println("8-VOLTAR AO MENU PRINCIPAL");
+            
                 Scanner digiteOperar = new Scanner(System.in);
                 variacao = digiteOperar.nextInt();
-
+            
                 switch (variacao) {
                     case 1:
                         consultaSaldo(numeroDigitado);
                         break;
                     case 2:
-                        consultarExtrato (numeroDigitado);
+                        consultarExtrato(numeroDigitado);
                         break;
                     case 3:
-                        efetuarPagamento (numeroDigitado);
+                        efetuarPagamento(numeroDigitado);
                         break;
                     case 4:
-                        efetuarDeposito (numeroDigitado);
+                        efetuarDeposito(numeroDigitado);
                         break;
                     case 5:
-                        efetuarTransferencia ();
+                        efetuarTransferencia();
                         break;
                     case 6:
-                        efetuarSaque (numeroDigitado);
+                        efetuarSaque(numeroDigitado);
                         break;
                     case 7:
+                        encerrarConta(numeroDigitado); // Chame o método para encerrar a conta
+                        break;
+                    case 8:
                         System.out.println("Voltando ao menu principal...");
                         empurrarTela();
                         break;
@@ -201,9 +205,26 @@ public class ContaBancaria {
                         System.out.println("Opção inválida. Tente novamente.");
                         break;
                 }
-            } while (variacao != 7);
-        } else {
-            System.out.println("A conta de número " + numeroDigitado + " não existe.");
+            } while (variacao != 8);
+        }
+            
+    }
+
+    public void encerrarConta(int numeroConta) {
+        try (Connection connection = ConnectionDB.getConexaoMySQL()) {
+            String sql = "UPDATE conta_bancaria SET STATUS_CONTA = 1 WHERE NUMERO_CONTA = ?";
+            PreparedStatement statement = connection.prepareStatement(sql);
+
+            statement.setInt(1, numeroConta);
+
+            int rowsUpdated = statement.executeUpdate();
+            if (rowsUpdated > 0) {
+                System.out.println("Conta " + numeroConta + " foi cancelada com sucesso. Status alterado para inativo.");
+            } else {
+                System.out.println("Falha ao cancelar a conta. Verifique o número da conta.");
+            }
+        } catch (SQLException e) {
+            System.out.println("Erro ao tentar cancelar a conta: " + e.getMessage());
         }
     }
             //verificando se conta existe no DB
