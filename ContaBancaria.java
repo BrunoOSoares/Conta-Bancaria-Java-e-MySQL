@@ -102,8 +102,6 @@ public class ContaBancaria {
                             int proximoNumero = (maxNumeroConta + 1); // Calcula o próximo número de conta
                             numeroConta = proximoNumero;
                         }
-                    
-                    
                 } else {
                     numeroConta = 1000;
                 }
@@ -147,36 +145,52 @@ public class ContaBancaria {
 
 
     //operar conta, saldo, extrato, pagamento, deposito, transferencia e saque
-    
+    public boolean verificarContaAtiva(int numeroConta) {
+        try (Connection connection = ConnectionDB.getConexaoMySQL()) {
+            String query = "SELECT STATUS_CONTA FROM conta_bancaria WHERE NUMERO_CONTA = ?";
+            try (PreparedStatement statement = connection.prepareStatement(query)) {
+                statement.setInt(1, numeroConta);
+                try (ResultSet resultSet = statement.executeQuery()) {
+                    if (resultSet.next()) {
+                        int statusConta = resultSet.getInt("STATUS_CONTA");
+                        return statusConta == 1; // 1 representa conta ativa
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Erro ao verificar o status da conta: " + e.getMessage());
+        }
+        return false; // Em caso de erro ou se a conta não existir
+    }
+
     void operarConta() {
-        int numeroDigitado = 0;
-
-        Scanner digiteConta = new Scanner(System.in);
-        System.out.println("Entre com o numero da conta com 4 digitos: ");
-        numeroDigitado = digiteConta.nextInt();
-
+        Scanner scanner = new Scanner(System.in);
+    
+        System.out.println("Entre com o número da conta com 4 dígitos: ");
+        int numeroDigitado = scanner.nextInt();
+        scanner.nextLine(); // Limpar o buffer
+    
         empurrarTela();
-
-        
-
-        // verificar se a conta existe
-        if (verificarContaExiste(numeroDigitado)) {
-            int variacao = 0;
-
+    
+        // Verificar se a conta existe e está ativa
+        if (verificarContaExiste(numeroDigitado) && verificarContaAtiva(numeroDigitado)) {
+            int variacao;
+    
             do {
                 System.out.println("----------------$$$$---------------");
-                System.out.println("1-SALDO");
-                System.out.println("2-EXTRATO");
-                System.out.println("3-PAGAMENTO");
-                System.out.println("4-DEPOSITO");
-                System.out.println("5-TRANSFERÊNCIA");
-                System.out.println("6-SAQUE");
-                System.out.println("7-ENCERRAR CONTA");
-                System.out.println("8-VOLTAR AO MENU PRINCIPAL");
-            
-                Scanner digiteOperar = new Scanner(System.in);
-                variacao = digiteOperar.nextInt();
-            
+                System.out.println("1 - Consultar Saldo");
+                System.out.println("2 - Consultar Extrato");
+                System.out.println("3 - Efetuar Pagamento");
+                System.out.println("4 - Efetuar Depósito");
+                System.out.println("5 - Efetuar Transferência");
+                System.out.println("6 - Efetuar Saque");
+                System.out.println("7 - Encerrar Conta");
+                System.out.println("8 - Voltar ao Menu Principal");
+    
+                System.out.println("Escolha uma opção: ");
+                variacao = scanner.nextInt();
+                scanner.nextLine(); // Limpar o buffer
+    
                 switch (variacao) {
                     case 1:
                         consultaSaldo(numeroDigitado);
@@ -197,7 +211,7 @@ public class ContaBancaria {
                         efetuarSaque(numeroDigitado);
                         break;
                     case 7:
-                        encerrarConta(numeroDigitado); // Chame o método para encerrar a conta
+                        encerrarConta(numeroDigitado);
                         break;
                     case 8:
                         System.out.println("Voltando ao menu principal...");
@@ -208,26 +222,54 @@ public class ContaBancaria {
                         break;
                 }
             } while (variacao != 8);
+        } else {
+            System.out.println("A conta de número " + numeroDigitado + " não existe ou está inativa.");
         }
-            
     }
 
     public void encerrarConta(int numeroConta) {
+        // Verificar o saldo da conta antes de encerrar
+        double saldoConta = consultarSaldo(numeroConta);
+    
+        if (saldoConta == 0) {
+            try (Connection connection = ConnectionDB.getConexaoMySQL()) {
+                String sql = "UPDATE conta_bancaria SET STATUS_CONTA = 0 WHERE NUMERO_CONTA = ?";
+                PreparedStatement statement = connection.prepareStatement(sql);
+    
+                statement.setInt(1, numeroConta);
+    
+                int rowsUpdated = statement.executeUpdate();
+                if (rowsUpdated > 0) {
+                    System.out.println("Conta " + numeroConta + " foi cancelada com sucesso. Status alterado para inativo.");
+                } else {
+                    System.out.println("Falha ao cancelar a conta. Verifique o número da conta.");
+                }
+            } catch (SQLException e) {
+                System.out.println("Erro ao tentar cancelar a conta: " + e.getMessage());
+            }
+        } else {
+            System.out.println("Não é possível encerrar a conta. Saldo não é zero.");
+        }
+    }
+    
+    // Método para consultar o saldo da conta no banco de dados
+    private double consultarSaldo(int numeroConta) {
+        double saldo = 0.0;
+    
         try (Connection connection = ConnectionDB.getConexaoMySQL()) {
-            String sql = "UPDATE conta_bancaria SET STATUS_CONTA = 0 WHERE NUMERO_CONTA = ?";
+            String sql = "SELECT SALDO_CONTA FROM conta_bancaria WHERE NUMERO_CONTA = ?";
             PreparedStatement statement = connection.prepareStatement(sql);
-
             statement.setInt(1, numeroConta);
-
-            int rowsUpdated = statement.executeUpdate();
-            if (rowsUpdated > 0) {
-                System.out.println("Conta " + numeroConta + " foi cancelada com sucesso. Status alterado para inativo.");
-            } else {
-                System.out.println("Falha ao cancelar a conta. Verifique o número da conta.");
+    
+            ResultSet resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                saldo = resultSet.getDouble("SALDO_CONTA");
             }
         } catch (SQLException e) {
-            System.out.println("Erro ao tentar cancelar a conta: " + e.getMessage());
+            System.out.println("Erro ao consultar o saldo da conta: " + e.getMessage());
         }
+    
+        return saldo;
     }
             //verificando se conta existe no DB
     boolean verificarContaExiste(int numeroConta) {
@@ -284,37 +326,37 @@ public class ContaBancaria {
     
     // pagamento de conta
     
-void efetuarPagamento(int numeroDigitado) {
-    Scanner inputValorPagamento = new Scanner(System.in);
-    System.out.println("Digite o valor do pagamento: ");
-    double valorPagamento = inputValorPagamento.nextDouble();
-
-    try (Connection connection = ConnectionDB.getConexaoMySQL()) {
-        // Obter o ID da conta com base no número da conta
-        String idContaQuery = "SELECT ID_CONTA FROM conta_bancaria WHERE NUMERO_CONTA = ?";
-        PreparedStatement idContaStatement = connection.prepareStatement(idContaQuery);
-        idContaStatement.setInt(1, numeroDigitado);
-
-        ResultSet idContaResult = idContaStatement.executeQuery();
-
-        if (idContaResult.next()) {
-            int idConta = idContaResult.getInt("ID_CONTA");
-            System.out.println("ID da conta: " + idConta);
-
-            // Verificar o saldo da conta
-            String saldoQuery = "SELECT SALDO_CONTA FROM conta_bancaria WHERE ID_CONTA = ?";
+    void efetuarPagamento(int numeroDigitado) {
+        Scanner inputValorPagamento = new Scanner(System.in);
+        System.out.println("Digite o valor do pagamento: ");
+        double valorPagamento = inputValorPagamento.nextDouble();
+    
+        try (Connection connection = ConnectionDB.getConexaoMySQL()) {
+            // Obter o saldo da conta e o tipo da conta com base no número da conta
+            String saldoQuery = "SELECT ID_CONTA, SALDO_CONTA, TIPO_CONTA FROM conta_bancaria WHERE NUMERO_CONTA = ?";
             PreparedStatement saldoStatement = connection.prepareStatement(saldoQuery);
-            saldoStatement.setInt(1, idConta);
-
+            saldoStatement.setInt(1, numeroDigitado);
+    
             ResultSet saldoResult = saldoStatement.executeQuery();
-
+    
             if (saldoResult.next()) {
+                int idConta = saldoResult.getInt("ID_CONTA");
                 double saldoConta = saldoResult.getDouble("SALDO_CONTA");
+                String tipoConta = saldoResult.getString("TIPO_CONTA");
+    
+                // Agora você tem o saldo e o tipo da conta, pode usar essas informações conforme necessário
                 System.out.println("Saldo da conta: R$ " + saldoConta);
-
+                System.out.println("Tipo da conta: " + tipoConta);
+    
+                if ("C".equals(tipoConta)) {
+                    // Lógica para conta corrente
+                    valorPagamento += 12; // Adiciona a taxa para conta corrente
+                } else if ("P".equals(tipoConta)) {
+                    // Lógica para conta poupança
+                    valorPagamento += 20; // Adiciona a taxa para conta poupança
+                }
+    
                 if (valorPagamento <= saldoConta) {
-                    System.out.println("Pagamento aprovado.");
-
                     // Inserir a transação no banco de dados
                     String insertTransacaoQuery = "INSERT INTO transacoes_bancaria (ID_CONTA, DATA_TRANSACAO, VALOR_TRANSACAO, ID_TIPO) VALUES (?, ?, ?, ?)";
                     PreparedStatement insertTransacaoStatement = connection.prepareStatement(insertTransacaoQuery);
@@ -322,51 +364,45 @@ void efetuarPagamento(int numeroDigitado) {
                     insertTransacaoStatement.setDate(2, new Date(System.currentTimeMillis()));
                     insertTransacaoStatement.setDouble(3, valorPagamento);
                     insertTransacaoStatement.setInt(4, 1); // ID_TIPO 1 representa o tipo "pagamento"
-
+    
                     int rowsInserted = insertTransacaoStatement.executeUpdate();
                     if (rowsInserted > 0) {
                         System.out.println("Transação registrada com sucesso.");
-
+    
                         // Atualizar o saldo na tabela conta_bancaria
                         double novoSaldo = saldoConta - valorPagamento;
                         String updateSaldoQuery = "UPDATE conta_bancaria SET SALDO_CONTA = ? WHERE ID_CONTA = ?";
                         PreparedStatement updateSaldoStatement = connection.prepareStatement(updateSaldoQuery);
                         updateSaldoStatement.setDouble(1, novoSaldo);
                         updateSaldoStatement.setInt(2, idConta);
-
+    
                         int rowsUpdated = updateSaldoStatement.executeUpdate();
                         if (rowsUpdated > 0) {
                             System.out.println("Saldo atualizado com sucesso.");
                         } else {
                             System.out.println("Falha ao atualizar o saldo.");
                         }
-
+    
                         updateSaldoStatement.close();
                     } else {
                         System.out.println("Falha ao registrar a transação.");
                     }
-
+    
                     insertTransacaoStatement.close();
                 } else {
                     System.out.println("Saldo insuficiente para realizar o pagamento.");
                 }
             } else {
-                System.out.println("Não foi possível obter o saldo da conta.");
+                System.out.println("A conta de número " + numeroDigitado + " não existe.");
             }
-
+    
             saldoResult.close();
             saldoStatement.close();
-        } else {
-            System.out.println("A conta de número " + numeroDigitado + " não existe.");
+        } catch (SQLException e) {
+            e.printStackTrace();
+            System.out.println("Ocorreu um erro ao conectar ao banco de dados: " + e.getMessage());
         }
-
-        idContaResult.close();
-        idContaStatement.close();
-    } catch (SQLException e) {
-        System.out.println("Ocorreu um erro ao conectar ao banco de dados: " + e.getMessage());
     }
-}
-
 
 //efetuar deposito 
 
